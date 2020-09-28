@@ -25,10 +25,9 @@ mod vertex;
 mod view_state;
 use render_target::{SwapchainTarget, TextureTarget};
 mod renderer;
+use raw_window_handle::HasRawWindowHandle;
 use renderer::State;
 use std::sync::mpsc::channel;
-use raw_window_handle::HasRawWindowHandle;
-
 
 async fn create_for_window(window: &Window) -> State<SwapchainTarget> {
     //let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
@@ -43,7 +42,7 @@ async fn create_for_window(window: &Window) -> State<SwapchainTarget> {
     State::new(instance, (size.width, size.height), target).await
 }
 
-async fn create_for_handle(window: &CanvasWindow, size:(u32, u32)) -> State<SwapchainTarget> {
+async fn create_for_handle(window: &CanvasWindow, size: (u32, u32)) -> State<SwapchainTarget> {
     //let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
     let instance = wgpu::Instance::new();
     let surface = unsafe { instance.create_surface(window) };
@@ -54,7 +53,6 @@ async fn create_for_handle(window: &CanvasWindow, size:(u32, u32)) -> State<Swap
 
     State::new(instance, (size.0, size.1), target).await
 }
-
 
 fn create_window() -> (
     winit::event_loop::EventLoop<StateSetup>,
@@ -273,28 +271,24 @@ struct CanvasWindow {
 
 unsafe impl HasRawWindowHandle for CanvasWindow {
     fn raw_window_handle(&self) -> raw_window_handle::RawWindowHandle {
-
         let handle = raw_window_handle::web::WebHandle {
             id: self.id,
             ..raw_window_handle::web::WebHandle::empty()
         };
         raw_window_handle::RawWindowHandle::Web(handle)
     }
-
 }
 
 #[wasm_bindgen]
 impl RenderController {
-    pub async fn new(canvas_id: u32) -> RenderController {
+    pub async fn new(canvas_id: u32, width: u32, height: u32) -> RenderController {
         std::panic::set_hook(Box::new(console_error_panic_hook::hook));
         console_log::init().expect("could not initialize logger");
 
-        let window = CanvasWindow { id: canvas_id};
-        let mut state = create_for_handle(&window, (640,480)).await;
+        let window = CanvasWindow { id: canvas_id };
+        let mut state = create_for_handle(&window, (width, height)).await;
 
-        RenderController {
-            state
-        }
+        RenderController { state }
 
         // let canvas = web_sys::window()
         //     .unwrap()
@@ -325,4 +319,19 @@ impl RenderController {
         self.state.swap_image();
     }
 
+    pub fn update_position(&mut self, x: f32, y: f32) {
+        self.state.update_position((x, y));
+    }
+
+    pub fn update_zoom(&mut self, x: f32, y: f32) {
+        self.state.update_zoom((x, y));
+    }
+
+    pub fn clear_anchor(&mut self) {
+        self.state.clear_anchor();
+    }
+
+    pub fn set_viewport_size(&mut self, width: u32, height: u32) {
+        self.state.resize((width, height));
+    }
 }
